@@ -27,7 +27,62 @@ function imageOf(src) {
     i.src = src;
   });
 }
+async function postcard(work) {
+  const photo = await imageOf(work.photo),
+    paper = document.createElement("canvas"),
+    ctx = paper.getContext("2d");
+  paper.width = 2000;
+  paper.height = 1460;
+  ctx.fillStyle = "#fbf0df";
+  ctx.fillRect(0, 0, 2000, 1460);
+  const x = 72,
+    y = 68,
+    w = 1856,
+    h = 1044,
+    ratio = Math.min(w / photo.width, h / photo.height);
+  ctx.fillStyle = "#ead5bb";
+  ctx.fillRect(x, y, w, h);
+  ctx.drawImage(
+    photo,
+    x + (w - photo.width * ratio) / 2,
+    y + (h - photo.height * ratio) / 2,
+    photo.width * ratio,
+    photo.height * ratio,
+  );
+  ctx.strokeStyle = "#b99976";
+  ctx.lineWidth = 2;
+  ctx.strokeRect(x - 1, y - 1, w + 2, h + 2);
+  ctx.fillStyle = "#733f3e";
+  ctx.font = "italic 50px Georgia";
+  ctx.fillText("Sweetie!", x, 1190);
+  ctx.textAlign = "right";
+  ctx.fillStyle = "#875e51";
+  ctx.font = '32px "Songti SC",serif';
+  ctx.fillText(new Date(work.date).toLocaleDateString("zh-CN"), 1928, 1190);
+  ctx.textAlign = "left";
+  ctx.fillStyle = "#4b312a";
+  ctx.font = 'bold 62px "Songti SC",Georgia,serif';
+  ctx.fillText(work.name || "我的蛋糕", x, 1285, 1820);
+  ctx.font = '36px "Songti SC",Georgia,serif';
+  ctx.fillStyle = "#855e51";
+  ctx.fillText(
+    "Made with love by " + (work.creator || "Sweetie 手作人") + ".",
+    x,
+    1370,
+    940,
+  );
+  ctx.textAlign = "right";
+  ctx.fillText(
+    work.design.card || work.design.text || "给平凡的一天，加上一点甜。",
+    1928,
+    1370,
+    840,
+  );
+  return paper;
+}
+
 export async function designCard(work, type = "png") {
+  if (type === "png") return postcard(work);
   const { design: d, name, creator, photo, date } = work,
     im = await imageOf(photo);
   const c = document.createElement("canvas");
@@ -67,7 +122,10 @@ export async function designCard(work, type = "png") {
         )
         .join("、") || "无",
     ],
-    ["蛋糕题字", d.text || "无"],
+    [
+      "蛋糕题字",
+      [d.letterName, d.text, d.letterDate].filter(Boolean).join(" · ") || "无",
+    ],
     [
       "包装",
       [
@@ -80,6 +138,11 @@ export async function designCard(work, type = "png") {
         .filter(Boolean)
         .join(" · "),
     ],
+    [
+      "用途与制作说明",
+      [d.occasion, d.notes].filter(Boolean).join(" · ") || "按图制作",
+    ],
+    ["用料说明", "用料与金额均为演示估算，实际配方、用量及价格由蛋糕师确认。"],
     ["参考报价", "¥ " + quote(d) + "（演示价格）"],
   ];
   ctx.font = "23px sans-serif";
@@ -226,7 +289,7 @@ export async function exportWork(work, type) {
     a = document.createElement("a");
   a.download =
     (work.name || "Sweetie").replace(/[\\/<>:"|?*]/g, "-") +
-    (type === "pdf" ? " · 定制需求单.pdf" : " · 蛋糕设计卡.png");
+    (type === "pdf" ? " · 定制需求单.pdf" : " · 甜品明信片.png");
   a.href = u;
   document.body.append(a);
   a.click();

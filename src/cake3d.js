@@ -26,6 +26,12 @@ const flavors = {
   velvet: "#ad5559",
 };
 const fillings = {
+  "matcha-cream": "#b5c88c",
+  cherry: "#a03e4a",
+  peach: "#f4b573",
+  caramel: "#b87b45",
+  ganache: "#704536",
+  nuts: "#bd965e",
   cream: "#fff0d5",
   "berry-cream": "#ecb8bd",
   "cocoa-cream": "#a27e68",
@@ -370,6 +376,10 @@ function cutFace(g, shape, r, y, h, start, end, mat, edges, flags = {}) {
 }
 
 const fruitTones = {
+  peach: "#eda95f",
+  nuts: "#ae854c",
+  caramel: "#b37444",
+  ganache: "#64402d",
   strawberry: "#bd4d5d",
   blueberry: "#635772",
   mango: "#f0ae48",
@@ -641,10 +651,22 @@ function fillingFruits(g, d, geo, assembly, painter, locations) {
 }
 const fillingBits = new Map();
 function fillingPartList(type, color, customColor) {
-  if (!["cookie", "pudding", "mochi", "jam"].includes(type))
+  if (
+    ![
+      "cookie",
+      "pudding",
+      "mochi",
+      "jam",
+      "peach",
+      "nuts",
+      "ganache",
+      "caramel",
+      "matcha-cream",
+    ].includes(type)
+  )
     return stamp(type, customColor);
   if (!fillingBits.has(type)) {
-    const diced = type === "cookie" || type === "pudding";
+    const diced = ["cookie", "pudding", "nuts", "peach"].includes(type);
     const geometry = diced
       ? new T.BoxGeometry(0.13, 0.07, 0.12)
       : new T.SphereGeometry(0.08, 16, 12);
@@ -768,7 +790,8 @@ function buildCake(g, d, cut, geometry, assembly = null) {
   const targets = [],
     coverage = limit(Number(d.creamPaint?.base ?? d.coverage) || 0, 0, 1);
   const c1 = new T.Color(d.color),
-    c2 = new T.Color(d.color2 || d.color);
+    c2 = new T.Color(d.color2 || d.color),
+    third = new T.Color(d.color3 || d.color);
   for (const [i, t] of geometry.tiers.entries()) {
     if (assembly && i === assembly.tier) {
       return openFilling(g, d, t, assembly);
@@ -912,9 +935,13 @@ function buildCake(g, d, cut, geometry, assembly = null) {
               0.09 * Math.sin(a * 2 + ny);
           }
           out.copy(c1).lerp(c2, limit(t, 0, 1));
+          if (d.color3)
+            out.lerp(third, Math.max(0, 1 - 3.6 * Math.abs(0.5 - ny)) * 0.88);
         }
       : null;
-    const m = colored ? material("#ffffff").clone() : material(d.color);
+    const m = colored
+      ? material("#ffffff").clone()
+      : material(d.color, finish === "sugarpaste" ? "matte" : "cream");
     if (colored) m.vertexColors = true;
     const frosted = add(
       g,
@@ -2191,7 +2218,7 @@ function setRenderer(renderer) {
 export function createViewport(host, callbacks = {}) {
   const renderer = new T.WebGLRenderer({
     antialias: true,
-    alpha: false,
+    alpha: !!callbacks.photographic,
     preserveDrawingBuffer: true,
     powerPreference: "high-performance",
   });
@@ -2228,6 +2255,22 @@ export function createViewport(host, callbacks = {}) {
   scene.background = new T.Color("#d1b9a5");
   scene.fog = new T.FogExp2("#d1b9a5", 0.014);
   const shadow = contact(scene, 0.95);
+  const photographic = !!callbacks.photographic;
+  let backdrop = null;
+  if (photographic) {
+    scene.background = null;
+    scene.fog = null;
+    floor.visible = false;
+    shadow.position.y = callbacks.photoMode ? floorY + 0.002 : -0.0008;
+    backdrop = new T.TextureLoader().load(
+      "./assets/scenes/" +
+        (callbacks.photoMode ? "photography" : "workshop") +
+        ".webp",
+      () => request(),
+    );
+    backdrop.colorSpace = T.SRGBColorSpace;
+    scene.background = backdrop;
+  }
   const base = new T.Group(),
     cake = new T.Group(),
     deco = new T.Group(),
@@ -2387,6 +2430,16 @@ export function createViewport(host, callbacks = {}) {
         halfSpan * Math.sin(elevation);
       desiredHeight = Math.max((halfSpan * 2) / aspect, halfVertical * 2) * 1.1;
     }
+    if (photographic) {
+      const width = t.radius;
+      const fraction = callbacks.photoMode ? 0.31 : 0.315;
+      desiredHeight = Math.max(
+        (2 * width) / (fraction * aspect),
+        (activeHeight + 0.42) * 2.45,
+      );
+      focusY = callbacks.photoMode ? 0.04 : -0.04;
+      if (boxed) desiredHeight *= 1.16;
+    }
     const h = desiredHeight / (2 * magnify),
       w = h * aspect;
     camera.left = -w;
@@ -2478,6 +2531,7 @@ export function createViewport(host, callbacks = {}) {
       d.finish,
       d.color,
       d.color2,
+      d.color3,
       d.creamPaint?.base ?? d.coverage,
       cut,
       assembly
@@ -2506,6 +2560,7 @@ export function createViewport(host, callbacks = {}) {
         scope: "outer",
         color: d.color,
         color2: d.color2,
+        color3: d.color3,
         finish: d.finish,
         cut: cut && !assembly ? cutPlan(d) : null,
         stopAt: assembly?.tier,
@@ -2552,7 +2607,12 @@ export function createViewport(host, callbacks = {}) {
     if (bk !== plateKey) {
       plateKey = bk;
       disposeGroup(base);
-      pedestal(base, d, geometry);
+      if (!photographic || callbacks.photoMode) pedestal(base, d, geometry);
+      else if (d.board !== "ivory") {
+        pedestal(base, d, geometry);
+        base.children.slice(1).forEach((part) => (part.visible = false));
+      }
+      if (photographic) shadow.scale.setScalar(geometry.baseBoard * 0.75);
       shadow.scale.setScalar(geometry.baseBoard / 1.5);
     }
     if (showProps && propsKey !== bk) {
@@ -2606,6 +2666,8 @@ export function createViewport(host, callbacks = {}) {
     const tk = JSON.stringify([
       structure,
       d.text,
+      d.letterName,
+      d.letterDate,
       d.textColor,
       d.textStyle,
       d.textSize,
@@ -3056,7 +3118,7 @@ export function createViewport(host, callbacks = {}) {
       request();
     },
     setStudioProps(value) {
-      showProps = !!value;
+      showProps = !!value && !photographic;
       props.visible = showProps;
       updateDesign(d);
     },
@@ -3105,7 +3167,7 @@ export function createViewport(host, callbacks = {}) {
       elevation = reference
         ? (d.referenceAngle * Math.PI) / 180
         : letterView
-          ? d.textPlacement === "pick"
+          ? d.textPlacement === "pick" || d.textPlacement === "side"
             ? 0.49
             : 1.1
           : view === "top"
@@ -3130,6 +3192,18 @@ export function createViewport(host, callbacks = {}) {
     },
     setBackground(css) {
       const color = new T.Color(css || "#eee0d3");
+      if (photographic) {
+        scene.backgroundIntensity =
+          css === "#d7dce0"
+            ? 0.86
+            : css === "#dfcace"
+              ? 0.91
+              : css === "#d0d7c5"
+                ? 0.96
+                : 1;
+        request();
+        return;
+      }
       floorMat.color.copy(color);
       scene.background.copy(color);
       scene.fog.color.copy(color);
@@ -3137,6 +3211,7 @@ export function createViewport(host, callbacks = {}) {
     },
     dispose() {
       destroyed = true;
+      backdrop?.dispose();
       cancelAnimationFrame(raf);
       ro.disconnect();
       for (const [evt, fn, opts] of events)
@@ -3260,4 +3335,29 @@ export async function ingredientThumbs(types) {
     }
   }
   return Object.fromEntries(names.map((t) => [t, thumbCache.get(t)]));
+}
+
+export function displayCake(design) {
+  const d = { ...defaults, ...design },
+    geo = dims(d),
+    group = new T.Group(),
+    cake = new T.Group(),
+    deco = new T.Group(),
+    letters = new T.Group(),
+    base = new T.Group();
+  buildCake(cake, d, false, geo);
+  pedestal(base, d, geo);
+  stampBatches(deco, d, geo, false);
+  makeCakeLettering(letters, d, geo, radiusAt, []);
+  settleLettering(letters, d, geo, null);
+  group.add(base, cake, deco, letters);
+  return {
+    group,
+    dispose() {
+      disposeGroup(cake);
+      disposeGroup(base);
+      disposeGroup(letters);
+      clearBatches(deco);
+    },
+  };
 }

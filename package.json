@@ -1,7 +1,27 @@
 {
   "name": "sweetie-cake-atelier",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
-  "scripts": { "build": "node build.cjs" },
-  "devDependencies": { "esbuild": "0.28.2" }
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build && node scripts/cache.mjs",
+    "check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "vite": "^7.2.0",
+    "typescript": "^5.9.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@types/three": "^0.180.0"
+  },
+  "dependencies": {
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "zustand": "^5.0.8",
+    "gsap": "^3.14.0",
+    "motion": "^12.23.0",
+    "three": "0.180.0",
+    "@react-three/fiber": "^9.4.0",
+    "@react-three/drei": "^10.7.0"
+  }
 }

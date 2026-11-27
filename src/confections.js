@@ -984,7 +984,24 @@ export function stamp(type, custom) {
       blueberry: (berry) => miscStamp(berry, "blueberry"),
     });
   else if (type === "rose") rose(group, color);
-  else if (type === "daisy") daisy(group, color);
+  else if (type === "violet" || type === "tulip") {
+    const purple = type === "violet",
+      m = material(color || (purple ? "#ab8cca" : "#dd92aa"), "flower");
+    for (let i = 0; i < (purple ? 5 : 6); i++)
+      petal(
+        group,
+        m,
+        (i * TAU) / (purple ? 5 : 6),
+        0.018,
+        0.016,
+        purple ? 0.055 : 0.052,
+        purple ? 0.095 : 0.065,
+        purple ? 0.048 : 0.175,
+        purple ? 0.8 : 0.22,
+      );
+    if (purple)
+      oval(group, material("#e6bc59"), 0, 0.044, 0, 0.025, 0.017, 0.024);
+  } else if (type === "daisy") daisy(group, color);
   else if (type === "bow") ribbon(group, color);
   else if (["heart", "star", "crown", "moon", "butterfly"].includes(type))
     shapeStamp(group, type, color);

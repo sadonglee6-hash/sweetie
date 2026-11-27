@@ -2,6 +2,15 @@ import { fruitCuts } from "./fruit-catalog.js";
 import { cakeOutline } from "./cake-shapes.js";
 // Shared by the editor, the recipe book and finished design cards.
 const names = {
+  oval: "椭圆形",
+  "matcha-cream": "抹茶奶油",
+  peach: "黄桃",
+  caramel: "焦糖",
+  ganache: "甘纳许",
+  nuts: "坚果碎",
+  sugarpaste: "翻糖抹面",
+  tulip: "郁金香",
+  violet: "紫罗兰",
   round: "圆形",
   square: "方形",
   heart: "爱心",
@@ -146,6 +155,8 @@ export function creamDescription(d) {
     !colors.includes(d.color2)
   )
     colors.push(d.color2);
+  if (d.color3 && ["gradient", "marble"].includes(d.finish))
+    colors.push(d.color3);
   return (
     finish +
     " · " +
@@ -195,6 +206,12 @@ export const pricing = {
     mango: 9,
     blueberry: 12,
     cookie: 4,
+    peach: 9,
+    caramel: 5,
+    ganache: 8,
+    nuts: 7,
+    cherry: 12,
+    "matcha-cream": 5,
     pudding: 6,
     mochi: 8,
     jam: 4,
@@ -207,6 +224,7 @@ export const pricing = {
     gradient: 8,
     drip: 9,
     marble: 8,
+    sugarpaste: 14,
   },
   piece: {
     cherry: 2,
@@ -343,7 +361,7 @@ export function materials(design) {
 }
 export function stageDesign(design, stepIndex) {
   const staged = JSON.parse(JSON.stringify(design));
-  const step = Math.min(6, Math.max(0, Math.floor(stepIndex || 0)));
+  const step = Math.min(7, Math.max(0, Math.floor(stepIndex || 0)));
   if (step < 1) {
     staged.fillings = [];
     staged.fillingPieces = [];
@@ -359,11 +377,11 @@ export function stageDesign(design, stepIndex) {
     staged.color = "#fff3df";
     staged.color2 = "#fff3df";
   }
-  if (step < 3) staged.items = [];
-  if (step === 3)
+  if (step < 4) staged.items = [];
+  if (step === 4)
     staged.items = staged.items.filter((item) => item.type.startsWith("pipe-"));
-  if (step < 5) staged.text = "";
-  if (step < 6)
+  if (step < 6) staged.text = "";
+  if (step < 7)
     Object.assign(staged, {
       board: "ivory",
       box: "none",
@@ -451,7 +469,7 @@ function recipe(
   return { id, name, english, category, desc, difficulty, design, tips };
 }
 
-export const recipes = [
+const legacyRecipes = [
   recipe(
     1,
     "樱桃奶油",
@@ -928,6 +946,204 @@ export const recipes = [
     ],
   ),
 ];
+
+export const storyRecipes = [
+  recipe(
+    101,
+    "草莓来信",
+    "Strawberry Letter",
+    "鲜果",
+    "第一封信写在草莓的切面上。香草戚风夹着红果和奶油，像午后收进围裙口袋的一份问候。",
+    "入门",
+    {
+      flavor: "vanilla",
+      fillings: ["strawberry"],
+      finish: "naked",
+      color: "#fff1d7",
+      height: "standard",
+      card: "给平凡的一天，加一点甜。",
+    },
+    ({ ring, dot, side }) => {
+      ring("pipe-shell", 24, 0.85, "#fff0d8", 1.05);
+      ring("strawberry", 6, 0.6, "#b63b39", 1.3);
+      side("strawberry-half", 12, 0.43, "#ce473c", 1.32);
+      dot("daisy", top(0, 0), "#fff0c9", 1.12);
+    },
+    [],
+  ),
+  recipe(
+    102,
+    "巧克力恋曲",
+    "Chocolate Romance",
+    "巧克力",
+    "浓黑巧克力遇上酸甜的黑樱桃，奶油上旋转的纹路像一首慢慢唱完的情歌。",
+    "进阶",
+    {
+      flavor: "cocoa",
+      fillings: ["ganache"],
+      finish: "drip",
+      color: "#69402f",
+    },
+    ({ ring, dot }) => {
+      ring("pipe-star", 16, 0.79, "#69412e", 1.28);
+      ring("cherry-bing", 6, 0.58, "#791f28", 1.27);
+      dot("chocolate", top(0.17, 0.2), "#583324", 1.55);
+      ring("gold", 24, 0.91, "#d0a14d", 0.58);
+    },
+    [],
+  ),
+  recipe(
+    103,
+    "柠檬花园",
+    "Lemon Garden",
+    "鲜果",
+    "一片明亮的柠檬，几枝沿奶油攀爬的小花。一口就能尝到窗边花园的晴天。",
+    "进阶",
+    { fillings: ["cream"], color: "#f9e5a7", finish: "smooth" },
+    ({ dot, ring, side }) => {
+      ring("pipe-shell", 19, 0.86, "#fff0bc", 0.93);
+      dot("lemon-wheel", top(-0.12, -0.19), "#f0c344", 1.65);
+      dot("lemon-wedge", top(0.32, 0.08), "#f0c344", 1.38);
+      side("pipe-leaf", 12, 0.46, "#779459", 1.2);
+      side("daisy", 9, 0.65, "#ffdb74", 0.82);
+      ring("daisy", 5, 0.57, "#fff3cf", 0.8);
+    },
+    [],
+  ),
+  recipe(
+    104,
+    "香芋梦境",
+    "Lavender Dream",
+    "花卉",
+    "紫罗兰与蓝莓藏在淡紫色花边里，细小的糖珠垂在侧面，像一串梦里的铃铛。",
+    "进阶",
+    { fillings: ["blueberry"], color: "#c4a8cb", finish: "vintage" },
+    ({ ring, side, dot }) => {
+      ring("pipe-shell", 24, 0.84, "#c7a4c8", 1);
+      ring("blueberry", 9, 0.59, "#4d527d", 1.55);
+      ring("violet", 4, 0.4, "#a58ac5", 1.25);
+      side("pipe-scallop", 8, 0.76, "#fff0cd", 1);
+      side("pearl", 8, 0.49, "#f5dbae", 0.85);
+      dot("violet", top(0, 0), "#ad91ce", 1.3);
+    },
+    [],
+  ),
+];
+for (const [old, id, name, english, desc, modify] of [
+  [
+    3,
+    105,
+    "芭蕾之梦",
+    "Ballet Dream",
+    "粉色缎带在心形蛋糕上轻轻垂落，像舞鞋系好的第一刻。",
+    null,
+  ],
+  [
+    1,
+    106,
+    "樱桃恋曲",
+    "Cherry Romance",
+    "一颗黑樱桃，一朵粉色奶油花，薄荷白的蛋糕侧面留出轻盈的空白。",
+    null,
+  ],
+  [
+    9,
+    107,
+    "秘密花园",
+    "Secret Garden",
+    "把一小片花园带回家，绿叶间悄悄开出一串铃兰。",
+    null,
+  ],
+  [
+    10,
+    108,
+    "小小公主",
+    "Little Princess",
+    "象牙白的裙摆、细密的珍珠和一顶小皇冠，为今天的主角加冕。",
+    null,
+  ],
+  [
+    7,
+    109,
+    "云端来信",
+    "Cloud Nine",
+    "海盐蓝的晴空上，软软的奶油云送来一封信。",
+    "cloud",
+  ],
+  [
+    3,
+    110,
+    "致亲爱的自己",
+    "Dear Myself",
+    "今天把最温柔的一份留给自己，在心形蛋糕上写下一句悄悄话。",
+    "self",
+  ],
+]) {
+  const r = structuredClone(legacyRecipes[old - 1]);
+  Object.assign(r, { id, name, english, desc });
+  if (modify === "cloud")
+    for (let i = 0; i < 6; i++)
+      r.design.items.push({
+        id: "cloud" + i,
+        type: "pipe-kiss",
+        color: "#fff5de",
+        scale: 1.35,
+        rotation: 0,
+        point: top(-0.53 + i * 0.12, -0.34 + 0.07 * Math.sin(i)),
+      });
+  if (modify === "self") {
+    r.design.text = "亲爱的我";
+    r.design.color = "#f5d7cf";
+    r.design.items = r.design.items.filter((x) => !x.type.includes("cherry"));
+  }
+  storyRecipes.push(r);
+}
+for (const r of storyRecipes) {
+  const d = r.design;
+  r.tips = [
+    "选取" +
+      d.size +
+      "寸" +
+      label(d.shape) +
+      label(d.flavor) +
+      "蛋糕胚，准备" +
+      d.layers +
+      "层。",
+    "揭开蛋糕胚，添加" +
+      (d.fillings.map(label).join("、") || "香草奶油") +
+      "夹心。",
+    "用刮刀抹开奶油，完成" + label(d.finish) + "表面。",
+    "把陶瓷碗中的奶油调成配方底色 " + d.color + "，可以再加一点自己的颜色。",
+    "沿边缘挤出" +
+      [
+        ...new Set(
+          d.items
+            .filter((x) => x.type.startsWith("pipe-"))
+            .map((x) => label(x.type)),
+        ),
+      ]
+        .slice(0, 2)
+        .join("、") +
+      "。",
+    "摆上" +
+      [
+        ...new Set(
+          d.items
+            .filter((x) => !x.type.startsWith("pipe-"))
+            .map((x) => pieceLabel(x.type)),
+        ),
+      ]
+        .slice(0, 3)
+        .join("、") +
+      "，转一圈检查位置。",
+    "在留白处写下" + (d.text ? "「" + d.text + "」" : "想送给对方的话") + "。",
+    "选好底托、纸盒和缎带，把这份心意收进礼盒。",
+  ];
+}
+for (const recipe of legacyRecipes)
+  if (recipe.tips.length === 7)
+    recipe.tips.splice(3, 0, "在陶瓷碗中调出配方的奶油颜色。");
+export const recipes = [...storyRecipes, ...legacyRecipes];
 
 // The journal uses preset references today. A future image provider receives a
 // local Blob and returns the same structured recipe; no photo leaves the browser here.

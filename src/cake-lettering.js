@@ -83,8 +83,16 @@ function inkTexture(text, tint, style, arc) {
 
 export function makeCakeLettering(group, d, geo, radiusAt, obstacles = []) {
   group.userData.placement = null;
-  if (!d.text?.trim()) return;
-  const { map, w, h } = inkTexture(d.text, d.textColor, d.textStyle, d.textArc);
+  const inscription = [d.letterName, d.text, d.letterDate]
+    .filter((v) => v?.trim())
+    .join("\n");
+  if (!inscription) return;
+  const { map, w, h } = inkTexture(
+    inscription,
+    d.textColor,
+    d.textStyle,
+    d.textArc,
+  );
   const mat = new T.MeshBasicMaterial({
     map,
     transparent: true,
@@ -101,6 +109,30 @@ export function makeCakeLettering(group, d, geo, radiusAt, obstacles = []) {
   const factor = Math.min((r * 0.345) / 112, maxW / w, maxH / h) * size;
   const width = w * factor,
     height = h * factor;
+  if (d.textPlacement === "side") {
+    const tier = geo.tiers[0],
+      panel = new T.PlaneGeometry(width, height, 64, 8);
+    const xyz = panel.attributes.position;
+    for (let i = 0; i < xyz.count; i++) {
+      const theta =
+        Math.PI / 2 -
+        xyz.getX(i) / tier.radius +
+        (d.textX || 0) * 1.8 +
+        (d.textRotation || 0);
+      const rad = tier.radius * radiusAt(d.shape, theta) + 0.029;
+      xyz.setXYZ(
+        i,
+        Math.cos(theta) * rad,
+        tier.y + tier.h * (0.52 + (d.textZ || 0) * 0.42) + xyz.getY(i),
+        Math.sin(theta) * rad,
+      );
+    }
+    panel.computeVertexNormals();
+    const m = new T.Mesh(panel, mat);
+    m.userData.ownMat = true;
+    group.add(m);
+    return;
+  }
   if (isSign) {
     const holder = new T.Group();
     group.add(holder);

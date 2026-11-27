@@ -69,6 +69,10 @@ export function cakeOutline(shape, angle) {
   if (shape === "heart") return heart(mod(angle, TAU) / TAU);
   const c = Math.cos(angle),
     s = Math.sin(angle);
+  if (shape === "oval") {
+    const radius = 1 / Math.hypot(c / 1.1, s / 0.78);
+    return { x: c * radius, z: s * radius };
+  }
   const r =
     shape === "square"
       ? (Math.abs(c) ** 8 + Math.abs(s) ** 8) ** (-1 / 8)
@@ -98,6 +102,8 @@ function ray(theta) {
 }
 export function cakeRadiusAt(shape, theta) {
   if (shape === "heart") return ray(theta).r;
+  if (shape === "oval")
+    return 1 / Math.hypot(Math.cos(theta) / 1.1, Math.sin(theta) / 0.78);
   if (shape === "square")
     return (
       (Math.abs(Math.cos(theta)) ** 8 + Math.abs(Math.sin(theta)) ** 8) **
