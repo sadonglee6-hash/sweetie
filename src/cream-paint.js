@@ -49,13 +49,7 @@ function pigment(options, t, face, u, v) {
         Math.exp(
           -Math.abs(Math.sin(14 * u + 7 * v + 2 * Math.sin(v * 8 + u * 4))) * 7,
         );
-  const pair = f ? c.map((v, i) => v + (c2[i] - v) * f) : c;
-  if (options.color3 && face === "side") {
-    const third = rgb(options.color3),
-      w = Math.max(0, 1 - Math.abs(v - 0.5) * 3.6) * 0.88;
-    return pair.map((n, i) => Math.round(n + (third[i] - n) * w));
-  }
-  return pair;
+  return f ? c.map((val, i) => Math.round(val + (c2[i] - val) * f)) : c;
 }
 function boundsAt(shape, a, radiusAt) {
   return fastRadius(shape, a, radiusAt);
@@ -604,8 +598,7 @@ export class CreamPainter {
     };
   }
   coverage() {
-    if (!this.options || !this.paint?.strokes?.length || !this.fields.length)
-      return null;
+    if (!this.options || !this.paint?.strokes?.length || !this.fields.length) return null;
     let all = 0,
       filled = 0;
     for (const f of this.fields) {

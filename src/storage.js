@@ -1,4 +1,3 @@
-import { backupProgress } from "./progress.js";
 const prefix = "sweetie.v1.";
 export function readLocal(key, fallback) {
   try {
@@ -8,7 +7,6 @@ export function readLocal(key, fallback) {
   }
 }
 export function writeLocal(key, value) {
-  backupProgress(key, value);
   try {
     localStorage.setItem(prefix + key, JSON.stringify(value));
     return true;

@@ -1,199 +1,147 @@
 import { readLocal, writeLocal } from "./storage.js";
-const settings = {
-  music: true,
-  sound: true,
-  musicVolume: 0.45,
-  soundVolume: 0.66,
-  ...readLocal("letter.audio", {}),
-};
-let ctx,
-  buses = {},
+let enabled = readLocal("sound", false),
+  ctx,
   timer,
-  scene = "street",
-  beat = 0,
-  scrape,
-  unlocked = false;
-export const audioSettings = () => ({ ...settings });
-export const soundEnabled = () => settings.sound;
-function gains() {
-  if (!ctx) return;
-  for (const key of ["music", "sound"])
-    buses[key].gain.setTargetAtTime(
-      settings[key] && (key !== "music" || scene !== "street")
-        ? settings[key + "Volume"]
-        : 0,
-      ctx.currentTime,
-      0.1,
-    );
-}
-export function setAudio(key, value) {
-  if (!(key in settings)) return;
-  settings[key] = key.endsWith("Volume")
-    ? Math.min(1, Math.max(0, Number(value)))
-    : !!value;
-  writeLocal("letter.audio", settings);
-  gains();
-}
-export function toggleSound() {
-  setAudio("sound", !settings.sound);
-  return settings.sound;
-}
-export function setSoundScene(next) {
-  scene = next;
   beat = 0;
-  gains();
+export const soundEnabled = () => enabled;
+function context() {
+  if (!enabled) return null;
+  if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+  if (ctx.state === "suspended") ctx.resume().catch(() => {});
+  return ctx;
 }
-function tone(
-  hz,
-  start,
-  duration,
-  volume,
-  bus = "sound",
-  type = "sine",
-  bend = 0,
-) {
-  const t = ctx.currentTime + start,
-    o = ctx.createOscillator(),
-    g = ctx.createGain();
-  o.type = type;
-  o.frequency.setValueAtTime(hz, t);
-  if (bend)
-    o.frequency.exponentialRampToValueAtTime(hz * bend, t + duration * 0.66);
+function tone(c, hz, delay, duration, volume, timbre = "sine") {
+  const t = c.currentTime + delay,
+    o = c.createOscillator(),
+    g = c.createGain();
+  o.type = timbre;
+  o.frequency.value = hz;
   g.gain.setValueAtTime(0.00001, t);
-  g.gain.exponentialRampToValueAtTime(volume, t + 0.012);
+  g.gain.exponentialRampToValueAtTime(volume, t + 0.02);
   g.gain.exponentialRampToValueAtTime(0.00001, t + duration);
-  o.connect(g).connect(buses[bus]);
+  o.connect(g).connect(c.destination);
   o.start(t);
-  o.stop(t + duration + 0.02);
-  o.onended = () => {
-    o.disconnect();
-    g.disconnect();
-  };
+  o.stop(t + duration + 0.01);
 }
-function friction(length, center, volume, bus = "sound", loop = false) {
-  const buf = ctx.createBuffer(
-      1,
-      Math.round(ctx.sampleRate * length),
-      ctx.sampleRate,
-    ),
+function rustle(c, kind) {
+  const length = kind === "paper" ? 0.3 : 0.16,
+    buf = c.createBuffer(1, c.sampleRate * length, c.sampleRate),
     a = buf.getChannelData(0);
-  let old = 0;
-  for (let i = 0; i < a.length; i++) {
-    old = 0.61 * old + 0.39 * (2 * Math.random() - 1);
-    a[i] = old * (loop ? 1 : Math.sin((Math.PI * i) / a.length) ** 1.6);
-  }
-  const s = ctx.createBufferSource(),
-    f = ctx.createBiquadFilter(),
-    g = ctx.createGain();
+  for (let i = 0; i < a.length; i++)
+    a[i] = (Math.random() * 2 - 1) * Math.sin((Math.PI * i) / a.length) ** 2;
+  const s = c.createBufferSource(),
+    f = c.createBiquadFilter(),
+    g = c.createGain();
   s.buffer = buf;
-  s.loop = loop;
   f.type = "bandpass";
-  f.frequency.value = center;
-  f.Q.value = 0.82;
-  g.gain.value = volume;
-  s.connect(f).connect(g).connect(buses[bus]);
+  f.frequency.value = kind === "scrape" ? 950 : 1800;
+  g.gain.value = 0.06;
+  s.connect(f).connect(g).connect(c.destination);
   s.start();
-  s.onended = () => {
-    s.disconnect();
-    f.disconnect();
-    g.disconnect();
-  };
-  return { s, f, g };
-}
-function phrase() {
-  if (!ctx || document.hidden || !unlocked) return;
-  if (scene === "street") {
-    if (settings.sound) {
-      friction(2.8, 410, 0.07);
-      if (beat++ % 3 === 0) {
-        tone(2400, 0.45, 0.16, 0.026, "sound", "sine", 1.3);
-        tone(3000, 0.7, 0.19, 0.019, "sound", "sine", 0.79);
-      }
-    }
-    return;
-  }
-  if (!settings.music) return;
-  const chords = [
-      [261.63, 329.63, 392, 493.88],
-      [220, 261.63, 329.63, 392],
-      [174.61, 220, 261.63, 329.63],
-      [196, 246.94, 293.66, 392],
-    ],
-    c = chords[beat++ % 4];
-  c.forEach((n, i) => {
-    tone(n, i * 0.21, 2.9, 0.05, "music");
-    tone(n * 2, i * 0.21, 1.25, 0.009, "music", "triangle");
-  });
-  tone(c[(beat + 1) % 4] * 2, 1.65, 1.42, 0.023, "music");
-}
-export function startAudio() {
-  if (!ctx) {
-    const C = window.AudioContext || window.webkitAudioContext;
-    if (!C) return;
-    ctx = new C();
-    for (const key of ["music", "sound"]) {
-      buses[key] = ctx.createGain();
-      buses[key].gain.value = 0;
-      buses[key].connect(ctx.destination);
-    }
-    gains();
-  }
-  unlocked = true;
-  if (ctx.state !== "running") ctx.resume().catch(() => {});
-  if (!timer) {
-    phrase();
-    timer = setInterval(phrase, 3340);
-  }
 }
 export function play(kind = "tap") {
-  if (!unlocked || !settings.sound || document.hidden) return;
-  if (kind === "bell" || kind === "door") {
-    if (kind === "door") friction(0.45, 240, 0.23);
-    [938, 1399, 1732, 2077].forEach((n, i) => {
-      tone(n, 0.04 + i * 0.072, 1.86 - i * 0.18, 0.082 / (i + 1));
-      tone(n * 2.37, 0.05 + i * 0.072, 0.62, 0.016 / (i + 1));
+  if (!enabled || document.hidden) return;
+  try {
+    const c = context();
+    if (["scrape", "paper", "pipe", "sugar"].includes(kind)) {
+      rustle(c, kind);
+      return;
+    }
+    if (kind === "door" || kind === "save") {
+      [784, 1046.5, 1318.5].forEach((hz, i) =>
+        tone(c, hz, i * 0.09, 1.2 - i * 0.1, 0.033),
+      );
+    } else {
+      tone(c, kind === "place" ? 780 : 1040, 0, 0.2, 0.024);
+      tone(c, 1534, 0.005, 0.1, 0.005);
+    }
+  } catch {}
+}
+function piano() {
+  if (!enabled || document.hidden) return;
+  try {
+    const c = context(),
+      notes = [
+        [261.6, 329.6, 392],
+        [220, 261.6, 329.6],
+        [174.6, 220, 261.6],
+        [196, 246.9, 293.7],
+      ][beat++ % 4];
+    notes.forEach((v, i) => {
+      tone(c, v, i * 0.22, 3, 0.012, "sine");
+      tone(c, v * 2, i * 0.22, 1.8, 0.003, "triangle");
     });
-    return;
-  }
-  if (kind === "save") {
-    [523.25, 659.25, 783.99, 1046.5].forEach((n, i) =>
-      tone(n, i * 0.12, 1.25, 0.062),
-    );
-    return;
-  }
-  if (kind === "cat") {
-    tone(590, 0, 0.3, 0.045, "sound", "triangle", 1.3);
-    tone(755, 0.16, 0.25, 0.026, "sound", "sine", 0.67);
-    return;
-  }
-  if (["paper", "box", "pipe", "sugar", "scrape"].includes(kind)) {
-    friction(
-      kind === "box" ? 0.45 : 0.24,
-      { paper: 2300, box: 1300, pipe: 350, sugar: 3900, scrape: 860 }[kind],
-      0.18,
-    );
-    return;
-  }
-  tone(kind === "place" ? 640 : 885, 0, 0.12, 0.035);
+  } catch {}
 }
-export function scrapeMotion(speed, smoothing) {
-  if (!unlocked || !settings.sound || document.hidden) return;
-  if (!scrape) scrape = friction(0.6, 840, 0, "sound", true);
-  const now = ctx.currentTime;
-  scrape.f.frequency.setTargetAtTime(
-    (smoothing ? 500 : 810) + Math.min(3, speed) * 170,
-    now,
-    0.025,
-  );
-  scrape.g.gain.cancelScheduledValues(now);
-  scrape.g.gain.setTargetAtTime(0.19, now, 0.015);
-  scrape.g.gain.setTargetAtTime(0, now + 0.13, 0.04);
+export function startAudio() {
+  if (!enabled) return;
+  context();
+  if (!timer) {
+    piano();
+    timer = setInterval(piano, 3500);
+  }
 }
-export function releaseScrape() {
-  if (scrape) scrape.g.gain.setTargetAtTime(0, ctx.currentTime, 0.035);
+export function toggleSound() {
+  enabled = !enabled;
+  writeLocal("sound", enabled);
+  if (enabled) {
+    startAudio();
+    play("door");
+  } else {
+    clearInterval(timer);
+    timer = null;
+    ctx?.suspend();
+  }
+  return enabled;
 }
 document.addEventListener("visibilitychange", () => {
-  if (!ctx) return;
-  if (document.hidden) ctx.suspend();
-  else if (unlocked) ctx.resume().catch(() => {});
+  if (document.hidden) ctx?.suspend();
+  else if (enabled && ctx) ctx.resume().catch(() => {});
 });
+
+let scrape = null;
+export function scrapeMotion(speed, smoothing) {
+  if (!enabled || document.hidden) return;
+  try {
+    const c = context();
+    if (!scrape) {
+      const buffer = c.createBuffer(1, c.sampleRate * 0.75, c.sampleRate),
+        samples = buffer.getChannelData(0);
+      let previous = 0;
+      for (let i = 0; i < samples.length; i++) {
+        previous = 0.73 * previous + 0.27 * (2 * Math.random() - 1);
+        samples[i] = previous;
+      }
+      const source = c.createBufferSource(),
+        filter = c.createBiquadFilter(),
+        gain = c.createGain();
+      source.buffer = buffer;
+      source.loop = true;
+      filter.type = "bandpass";
+      filter.Q.value = 0.7;
+      gain.gain.value = 0;
+      source.connect(filter).connect(gain).connect(c.destination);
+      source.start();
+      scrape = { source, filter, gain };
+    }
+    const t = c.currentTime,
+      v = Math.min(2.6, Math.max(0.05, speed || 0));
+    scrape.filter.frequency.setTargetAtTime(
+      (smoothing ? 520 : 680) + v * 290,
+      t,
+      0.035,
+    );
+    scrape.source.playbackRate.setTargetAtTime(0.82 + v * 0.12, t, 0.04);
+    const g = scrape.gain.gain;
+    g.cancelScheduledValues(t);
+    g.setTargetAtTime(0.035 + v * 0.019, t, 0.018);
+    g.setTargetAtTime(0, t + 0.12, 0.05);
+  } catch {}
+}
+export function releaseScrape() {
+  if (!scrape || !ctx) return;
+  const t = ctx.currentTime,
+    g = scrape.gain.gain;
+  g.cancelScheduledValues(t);
+  g.setTargetAtTime(0, t, 0.025);
+}

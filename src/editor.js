@@ -1,4 +1,3 @@
-import { customization } from "./customization.js";
 import { createViewport, outline } from "./cake3d.js";
 import {
   blankDesign,
@@ -44,7 +43,7 @@ const pipes = [
 ];
 const drawers = {
   水果: Object.keys(fruitCuts),
-  花卉: ["rose", "daisy", "violet", "tulip", "lily"],
+  花卉: ["rose", "daisy", "lily"],
   糖果: ["macaron", "marshmallow", "pearl"],
   浪漫: ["bow", "satin-bow", "lace", "heart"],
   巧克力: ["chocolate", "truffle"],
@@ -59,8 +58,6 @@ const inherent = {
   fig: "#955267",
   mango: "#eeba55",
   lemon: "#ebcc64",
-  violet: "#9d80ba",
-  tulip: "#ee94ad",
   rose: "#dc92a0",
   daisy: "#fff0df",
   lily: "#fff6e8",
@@ -95,12 +92,6 @@ const fillings = [
   "pudding",
   "mochi",
   "jam",
-  "matcha-cream",
-  "cherry",
-  "peach",
-  "caramel",
-  "ganache",
-  "nuts",
 ];
 const finishNames = [
   "smooth",
@@ -110,7 +101,6 @@ const finishNames = [
   "gradient",
   "drip",
   "marble",
-  "sugarpaste",
 ];
 const clone = structuredClone;
 const btn = (cmd, txt, ic = "", cls = "secondary", attrs = "") =>
@@ -233,7 +223,7 @@ export async function createEditor(root, payload, app) {
       0,
       Math.min(
         stepNames.length - 1,
-        old + (payload.workflowVersion === 2 && old >= 3 ? 1 : 0),
+        old - (payload.workflowVersion !== 2 && old >= 3 ? 1 : 0),
       ),
     );
   };
@@ -290,9 +280,9 @@ export async function createEditor(root, payload, app) {
     });
   }
 
-  let preview = !!payload.preview,
+  let preview = false,
     cut = step === 1,
-    auto = !!payload.preview,
+    auto = false,
     mode = "orbit",
     selected = null,
     nozzle = "pipe-shell",
@@ -329,7 +319,7 @@ export async function createEditor(root, payload, app) {
       recipeId: recipe?.id,
       guided,
       guideProgress,
-      workflowVersion: 3,
+      workflowVersion: 2,
     };
   }
   function draft() {
@@ -400,7 +390,7 @@ export async function createEditor(root, payload, app) {
     );
   }
   function sync(panel = true) {
-    view?.setPackagingVisible((preview || step === 7) && showWrapped);
+    view?.setPackagingVisible((preview || step === 6) && showWrapped);
 
     view?.setDesign(d);
     if (assembly) updateAssembly();
@@ -444,7 +434,7 @@ export async function createEditor(root, payload, app) {
   }
   function modeOfStep() {
     if (step === 1 && assembly) return "fill";
-    return { 2: "paint", 4: "pipe", 5: "place" }[step] || "orbit";
+    return { 2: "paint", 3: "pipe", 4: "place" }[step] || "orbit";
   }
   function setMode(val) {
     mode = val;
@@ -465,7 +455,7 @@ export async function createEditor(root, payload, app) {
         ) +
         (preview
           ? "拖动旋转 · 滚轮或双指缩放"
-          : step === 6
+          : step === 5
             ? "祝福直接写在蛋糕上 · 拖动转台可换角度"
             : {
                 orbit: "拖动转台 · 滚轮缩放",
@@ -488,7 +478,7 @@ export async function createEditor(root, payload, app) {
     if (!bar || !ring) return;
     const item = selectedItem();
     const editing =
-      !preview && item && ([4, 5].includes(step) || (step === 1 && assembly));
+      !preview && item && ([3, 4].includes(step) || (step === 1 && assembly));
     const pos = editing ? view?.selectionScreenPoint?.(selected) : null;
     bar.hidden = ring.hidden = !pos?.visible;
     if (bar.hidden) return;
@@ -512,32 +502,30 @@ export async function createEditor(root, payload, app) {
     ring.style.height = radius * 1.65 + "px";
   }
   function stepNav() {
-    root.querySelector(".step-list").innerHTML =
-      stepNames
-        .map(
-          (n, i) =>
-            '<button data-ed="step" data-val="' +
-            i +
-            '" class="' +
-            (i === step ? "active" : "") +
-            '" ' +
-            (i === step ? 'aria-current="step"' : "") +
-            '><span class="step-n">' +
-            String(i + 1).padStart(2, "0") +
-            "</span><span>" +
-            n +
-            "</span>" +
-            icon(stepIcons[i], 16) +
-            "</button>",
-        )
-        .join("") +
-      '<button data-ed="preview"><span class="step-n">09</span><span>成品展示</span></button>';
+    root.querySelector(".step-list").innerHTML = stepNames
+      .map(
+        (n, i) =>
+          '<button data-ed="step" data-val="' +
+          i +
+          '" class="' +
+          (i === step ? "active" : "") +
+          '" ' +
+          (i === step ? 'aria-current="step"' : "") +
+          '><span class="step-n">' +
+          String(i + 1).padStart(2, "0") +
+          "</span><span>" +
+          n +
+          "</span>" +
+          icon(stepIcons[i], 16) +
+          "</button>",
+      )
+      .join("");
   }
   function shell() {
     root.innerHTML =
-      '<div class="editor-wrap"><div class="editor-title"><div><a href="#lobby" class="back-link">' +
+      '<div class="editor-wrap"><div class="editor-title"><div><a href="#home" class="back-link">' +
       icon("prev", 14) +
-      " 返回店内</a><h1>" +
+      " 工坊首页</a><h1>" +
       (preview ? "成品摄影台" : "蛋糕工作台") +
       " <i>" +
       (preview ? "The Final Cut" : "The Worktable") +
@@ -546,7 +534,7 @@ export async function createEditor(root, payload, app) {
         ? btn("back-edit", "继续制作", "pipe")
         : btn("reference", "参考配方", "book") +
           btn("materials", "材料清单", "list")) +
-      (preview ? "" : btn("preview", "拍摄成品", "eye", "primary")) +
+      (preview ? "" : btn("preview", "成品预览", "eye", "primary")) +
       '</div></div><div class="editor-grid' +
       (preview ? " is-preview" : "") +
       '"><aside class="steps-panel"><div class="panel-heading">制作步骤 <i>Method</i></div><div class="step-list"></div></aside><div class="stage"><div class="stage-canvas"></div><div class="stage-label"><span></span>' +
@@ -593,16 +581,14 @@ export async function createEditor(root, payload, app) {
         ? ""
         : btn(
             "next",
-            step === 7 ? "欣赏成品" : "下一步",
-            step === 7 ? "eye" : "next",
+            step === 6 ? "欣赏成品" : "下一步",
+            step === 6 ? "eye" : "next",
             "primary",
           )) +
       "</div></div></div>";
     stepNav();
     const host = root.querySelector(".stage-canvas");
     view = createViewport(host, {
-      photographic: true,
-      photoMode: preview,
       spacing: () => spacing,
       onViewChange: syncToolbar,
       onPlace: (p) => {
@@ -613,7 +599,7 @@ export async function createEditor(root, payload, app) {
       },
       onSelect: (key) => {
         selected = key;
-        if (!preview && (assembly || [4, 5].includes(step))) drawer();
+        if (!preview && (assembly || [3, 4].includes(step))) drawer();
         syncToolbar();
       },
       onMove: (key, p) => {
@@ -673,7 +659,7 @@ export async function createEditor(root, payload, app) {
       },
       { capture: true },
     );
-    const canDrop = () => !preview && (assembly || [4, 5].includes(step));
+    const canDrop = () => !preview && (assembly || [3, 4].includes(step));
     host.addEventListener("dragover", (e) => {
       if (canDrop()) e.preventDefault();
     });
@@ -687,9 +673,9 @@ export async function createEditor(root, payload, app) {
         if (fruitKind(type)) placeFilling(p, type);
         return;
       }
-      if (step === 4 && !pipes.includes(type)) return;
+      if (step === 3 && !pipes.includes(type)) return;
       if (
-        step === 5 &&
+        step === 4 &&
         !(type in inherent) &&
         !fruitKind(type) &&
         !/^number-[0-9]$/.test(type)
@@ -699,10 +685,10 @@ export async function createEditor(root, payload, app) {
     });
     view.setStudioProps?.(!preview);
     view.setBackground(background);
-    view.setPackagingVisible((preview || step === 7) && showWrapped);
+    view.setPackagingVisible((preview || step === 6) && showWrapped);
     view.setDesign(d);
     view.setCut(cut);
-    view.cameraView(!preview && step === 6 ? "lettering" : angle);
+    view.cameraView(!preview && step === 5 ? "lettering" : angle);
     view.setAuto(auto);
     setMode(preview ? "orbit" : modeOfStep());
     drawer();
@@ -725,7 +711,7 @@ export async function createEditor(root, payload, app) {
     });
     fx("place");
   }
-  function makeItem(p, type = step === 4 ? nozzle : activeMaterial()) {
+  function makeItem(p, type = step === 3 ? nozzle : activeMaterial()) {
     return {
       id: uid(),
       type,
@@ -749,7 +735,7 @@ export async function createEditor(root, payload, app) {
       { panel: !stroke || mode !== "pipe" },
     );
     view.animatePlacement(item.id);
-    fx(step === 4 ? "pipe" : material === "sugar" ? "sugar" : "place");
+    fx(step === 3 ? "pipe" : material === "sugar" ? "sugar" : "place");
   }
   function fieldsForSelection() {
     const a = selectedItem();
@@ -905,7 +891,7 @@ export async function createEditor(root, payload, app) {
     root.querySelector(".letter-slot")?.replaceChildren();
     root
       .querySelector(".editor-grid")
-      ?.classList.toggle("is-lettering", !preview && step === 6);
+      ?.classList.toggle("is-lettering", !preview && step === 5);
     const host = root.querySelector("#drawer-body");
     if (!host) return;
     if (preview) {
@@ -923,15 +909,10 @@ export async function createEditor(root, payload, app) {
         "胚</span><strong>¥ " +
         quote(d) +
         " <small>演示参考价</small></strong></div>" +
-        '<label class="text-label">给蛋糕师的制作说明<textarea data-text="notes" maxlength="300" placeholder="例如取用色、题字或包装细节">' +
-        esc(d.notes || "") +
-        "</textarea></label>" +
         packageViewControls() +
-        (recipe?.id <= 4 || (recipe?.id >= 101 && recipe?.id <= 104)
+        (recipe?.id <= 4
           ? '<details class="photo-reference"><summary>对照参考照片</summary><img src="' +
-            (recipe.id > 100
-              ? "./assets/recipes/" + (recipe.id - 100) + ".webp"
-              : asset("cake-" + recipe.id + ".webp")) +
+            asset("cake-" + recipe.id + ".webp") +
             '" alt="' +
             esc(recipe.name) +
             '的原始参考照片"></details>'
@@ -986,7 +967,7 @@ export async function createEditor(root, payload, app) {
             "</div>",
         ) +
         '<div class="export-actions">' +
-        btn("png", "保存高清明信片", "download", "primary wide") +
+        btn("png", "导出 PNG 设计卡", "download", "primary wide") +
         btn("pdf", "导出 PDF 定制需求单", "download", "secondary wide") +
         "</div>";
       return;
@@ -994,7 +975,7 @@ export async function createEditor(root, payload, app) {
     const title =
       '<div class="drawer-title"><small>STEP ' +
       String(step + 1).padStart(2, "0") +
-      " / 09</small><h2>" +
+      " / 07</small><h2>" +
       stepNames[step] +
       " <i>" +
       stepEnglish[step] +
@@ -1006,11 +987,7 @@ export async function createEditor(root, payload, app) {
       body =
         field(
           "蛋糕形状",
-          toggles(
-            "shape",
-            ["round", "square", "heart", "oval", "flower"],
-            d.shape,
-          ),
+          toggles("shape", ["round", "square", "heart", "flower"], d.shape),
         ) +
         field(
           "尺寸",
@@ -1097,43 +1074,6 @@ export async function createEditor(root, payload, app) {
     }
     if (step === 3) {
       body =
-        '<div class="mix-bowl" style="--cream:' +
-        esc(d.color) +
-        ";--second:" +
-        esc(d.color2) +
-        '"><img alt="陶瓷奶油碗" src="' +
-        asset("bowl-vanilla.webp") +
-        '"><i></i></div>' +
-        btn("mix-bowl", "拿起奶油碗", "", "secondary wide") +
-        field("奶油底色", colorPicker("color", d.color)) +
-        field(
-          "配色方式",
-          toggles("finish", ["smooth", "gradient", "marble"], d.finish, {
-            smooth: "单色",
-            gradient: "渐变",
-            marble: "大理石纹",
-          }),
-        ) +
-        (["gradient", "marble"].includes(d.finish)
-          ? field("第二种颜色", colorInput("color2", d.color2, "辅色"))
-          : "") +
-        field(
-          "第三种颜色",
-          '<div class="choices">' +
-            btn("third", d.color3 ? "移除第三色" : "加入第三色", "", "chip") +
-            "</div>" +
-            (d.color3 ? colorInput("color3", d.color3, "点缀色") : ""),
-        ) +
-        field(
-          "颜色深浅",
-          '<div class="choices">' +
-            btn("lighten", "加奶油白", "", "chip") +
-            btn("deepen", "加深色", "", "chip") +
-            "</div>",
-        );
-    }
-    if (step === 4) {
-      body =
         field("裱花嘴", ingredientGrid(pipes, nozzle, "nozzle")) +
         field("奶油颜色", colorPicker("piping", pipingColor)) +
         field(
@@ -1145,7 +1085,7 @@ export async function createEditor(root, payload, app) {
         ) +
         fieldsForSelection();
     }
-    if (step === 5) {
+    if (step === 4) {
       body =
         '<div class="ingredient-tabs">' +
         Object.keys(drawers)
@@ -1177,39 +1117,22 @@ export async function createEditor(root, payload, app) {
         field("摆放大小", slider("item-size", itemSize, 0.4, 2, 0.1, "大小")) +
         fieldsForSelection();
     }
-    if (step === 6) {
+    if (step === 5) {
       body =
         '<div class="letter-home"><div class="letter-entry"><label class="text-label" for="cake-message">蛋糕题字</label><textarea rows="2" id="cake-message" aria-label="蛋糕题字" class="full-input" data-text="text" placeholder="输入祝福，可换行" maxlength="32">' +
         esc(d.text) +
         '</textarea><div class="choices letter-phrases">' +
-        [
-          ...new Set(
-            [
-              d.suggestedWish,
-              "生日快乐",
-              "Happy Birthday",
-              "给最爱的你",
-            ].filter(Boolean),
-          ),
-        ]
+        ["生日快乐", "Happy Birthday", "给最爱的你"]
           .map((t) => btn("phrase", t, "", "chip", 'data-val="' + t + '"'))
           .join("") +
         "</div></div></div>" +
         field(
-          "姓名与纪念日",
-          '<label class="text-label">收件人姓名<input type="text" data-text="letterName" maxlength="18" value="' +
-            esc(d.letterName || "") +
-            '"></label><label class="text-label">纪念日期<input type="date" data-text="letterDate" value="' +
-            esc(d.letterDate || "") +
-            '"></label>',
-        ) +
-        field(
           "题字位置",
           toggles(
             "textPlacement",
-            ["surface", "side", "pick"],
+            ["surface", "pick"],
             d.textPlacement || "surface",
-            { surface: "写在蛋糕面", side: "沿侧面写", pick: "做成祝福插牌" },
+            { surface: "写在蛋糕面", pick: "做成祝福插牌" },
           ),
         ) +
         field(
@@ -1234,7 +1157,7 @@ export async function createEditor(root, payload, app) {
             "> 弧形排列</label>",
         );
     }
-    if (step === 7) {
+    if (step === 6) {
       body =
         field(
           "蛋糕底托",
@@ -1274,12 +1197,12 @@ export async function createEditor(root, payload, app) {
           ]
         : step === 2
           ? [["paint", "whisk", "刮刀"]]
-          : step === 4
+          : step === 3
             ? [
                 ["pipe", "pipe", "裱花"],
                 ["move", "move", "移动"],
               ]
-            : step === 5
+            : step === 4
               ? [
                   ["place", "plus", "放置"],
                   ["move", "move", "移动"],
@@ -1306,35 +1229,22 @@ export async function createEditor(root, payload, app) {
           "</div>"
         : "") +
       body;
-    if (step === 6) placeLetterEntry();
+    if (step === 5) placeLetterEntry();
   }
   function changeStep(n) {
-    if (n < 0 || n > 7) return;
+    if (n < 0 || n > 6) return;
     if (preview) {
       step = n;
       resetView(false);
       return;
     }
-    const leavingLettering = step === 6;
+    const leavingLettering = step === 5;
     if (assembly || leavingLettering) view.cameraView(angle);
     assembly = false;
     updateAssembly();
     step = n;
-    if ([1, 3, 5, 7].includes(n))
-      root.dispatchEvent(
-        new CustomEvent("sweetie:companion", {
-          detail: {
-            text: {
-              1: "揭开蛋糕胚，把喜欢的味道藏在里面。",
-              3: "这个颜色像春天的花瓣呢！",
-              5: "草莓和奶油可是绝配。",
-              7: "好漂亮，已经有你自己的风格啦。",
-            }[n],
-          },
-        }),
-      );
-    if (step === 7) showWrapped = true;
-    if (step === 6) {
+    if (step === 6) showWrapped = true;
+    if (step === 5) {
       auto = false;
       view.setAuto(false);
       view.cameraView("lettering");
@@ -1346,22 +1256,21 @@ export async function createEditor(root, payload, app) {
       snapshot();
       for (let i = guideProgress + 1; i <= n; i++) {
         if (i === 1) d.fillings = clone(staged.fillings);
-        if (i === 2) d.coverage = staged.coverage;
-        if (i === 2 || i === 3)
+        if (i === 2)
           Object.assign(d, {
             finish: staged.finish,
             color: staged.color,
             color2: staged.color2,
           });
-        if (i === 4 || i === 5) {
+        if (i === 3 || i === 4) {
           const types = staged.items.filter((x) =>
-            i === 4 ? x.type.startsWith("pipe-") : !x.type.startsWith("pipe-"),
+            i === 3 ? x.type.startsWith("pipe-") : !x.type.startsWith("pipe-"),
           );
           d.items.push(
             ...clone(types).filter((x) => !d.items.some((y) => y.id === x.id)),
           );
         }
-        if (i === 6)
+        if (i === 5)
           for (const key of [
             "text",
             "textColor",
@@ -1374,7 +1283,7 @@ export async function createEditor(root, payload, app) {
             "textPlacement",
           ])
             d[key] = staged[key];
-        if (i === 7)
+        if (i === 6)
           for (const key of ["board", "box", "ribbon", "card", "sticker"])
             d[key] = staged[key];
       }
@@ -1389,8 +1298,8 @@ export async function createEditor(root, payload, app) {
     const next = root.querySelector('[data-ed="next"]');
     if (next)
       next.innerHTML =
-        icon(step === 7 ? "eye" : "next", 16) +
-        (step === 7 ? "欣赏成品" : "下一步");
+        icon(step === 6 ? "eye" : "next", 16) +
+        (step === 6 ? "欣赏成品" : "下一步");
   }
   function setColor(k, val, panel = true) {
     if (k === "piping") {
@@ -1408,13 +1317,6 @@ export async function createEditor(root, payload, app) {
           d[k] = val;
           if (k === "color" || k === "color2") {
             paintPot = null;
-            if (step === 3 && !d.coverage) {
-              d.coverage = 1;
-              delete d.creamPaint;
-            }
-            if (k === "color" && d.creamPaint)
-              for (const stroke of d.creamPaint.strokes || [])
-                if (stroke.action === "spread") stroke.color = val;
             if (k === "color2" && !["gradient", "marble"].includes(d.finish))
               d.finish = "gradient";
           }
@@ -1427,21 +1329,11 @@ export async function createEditor(root, payload, app) {
     assembly = false;
     view.dispose();
     preview = toPreview;
-    auto = toPreview;
-    showWrapped = !toPreview && step === 7;
+    auto = false;
+    showWrapped = !toPreview && step === 6;
     cut = false;
     angle = Number.isFinite(d.referenceAngle) ? "reference" : "angle";
     shell();
-    root.dispatchEvent(
-      new CustomEvent("sweetie:companion", {
-        detail: {
-          finish: toPreview,
-          text: toPreview
-            ? "哇！今天独一无二的蛋糕诞生啦。要不要给它起个名字？"
-            : "",
-        },
-      }),
-    );
     if (toPreview) app.play("save");
   }
   async function record() {
@@ -1458,7 +1350,6 @@ export async function createEditor(root, payload, app) {
       name: name.trim() || "我的手作蛋糕",
       creator: creator.trim(),
       date: Date.now(),
-      specification: customization(d),
       design: clone(d),
       photo: c.toDataURL("image/jpeg", 0.9),
       id: id || uid(),
@@ -1517,41 +1408,10 @@ export async function createEditor(root, payload, app) {
     const key = el.dataset.key,
       val = el.dataset.val,
       cmd = el.dataset.ed;
-    app.play(step === 7 ? "box" : "tap");
-    if (cmd === "mix-bowl") {
-      root.dispatchEvent(new CustomEvent("sweetie:mix", { detail: d.color }));
-      return;
-    }
-    if (cmd === "third") {
-      mutate(() => {
-        d.color3 = d.color3 ? null : "#f1d7a9";
-        if (d.color3) d.finish = "gradient";
-        if (!d.coverage) d.coverage = 1;
-      });
-      return;
-    }
-    if (cmd === "lighten" || cmd === "deepen") {
-      const rgb = d.color
-        .slice(1)
-        .match(/../g)
-        .map((hex) => parseInt(hex, 16));
-      setColor(
-        "color",
-        "#" +
-          rgb
-            .map((v) =>
-              Math.round(v * 0.86 + (cmd === "lighten" ? 255 : 58) * 0.14)
-                .toString(16)
-                .padStart(2, "0"),
-            )
-            .join(""),
-      );
-      return;
-    }
-
+    app.play("tap");
     if (cmd === "step") changeStep(+val);
     if (cmd === "next") {
-      if (step === 7) resetView(true);
+      if (step === 6) resetView(true);
       else changeStep(step + 1);
     }
     if (cmd === "clear-letter-position") {
@@ -1781,7 +1641,7 @@ export async function createEditor(root, payload, app) {
             ? "reference"
             : "angle"
           : val;
-      view.cameraView(!preview && step === 6 ? "lettering" : angle);
+      view.cameraView(!preview && step === 5 ? "lettering" : angle);
       if (preview) {
         auto = false;
         view.setAuto(false);
@@ -1876,9 +1736,7 @@ export async function createEditor(root, payload, app) {
           "</small><h2>" +
           esc(r.name) +
           '</h2><img src="' +
-          (r.id > 100
-            ? "./assets/recipes/" + (r.id - 100) + ".webp"
-            : asset("cake-" + r.id + ".webp")) +
+          asset("cake-" + r.id + ".webp") +
           '" alt="' +
           esc(r.name) +
           '"><p>' +
@@ -1981,7 +1839,7 @@ export async function createEditor(root, payload, app) {
       lastPaintPoint = null;
       stroke = false;
       gestureSaved = false;
-      if (step === 4 && mode === "pipe" && !preview) drawer();
+      if (step === 3 && mode === "pipe" && !preview) drawer();
     }
   }
   function keys(e) {
@@ -2013,17 +1871,6 @@ export async function createEditor(root, payload, app) {
     e.dataTransfer.setData("application/x-sweetie", type);
   }
   shell();
-  if (preview)
-    root.dispatchEvent(
-      new CustomEvent("sweetie:companion", {
-        detail: {
-          finish: true,
-          text: "哇！今天独一无二的蛋糕诞生啦。要不要给它起个名字？",
-        },
-      }),
-    );
-  const applyMix = (e) => setColor("color", e.detail);
-  root.addEventListener("sweetie:mixed", applyMix);
   narrow.addEventListener("change", placeLetterEntry);
   root.addEventListener("click", click);
   root.addEventListener("input", input);
@@ -2037,7 +1884,6 @@ export async function createEditor(root, payload, app) {
     dispose() {
       if (disposed) return;
       disposed = true;
-      root.removeEventListener("sweetie:mixed", applyMix);
       narrow.removeEventListener("change", placeLetterEntry);
       releaseScrape();
       draft();
