@@ -1,6 +1,6 @@
 // Each release keeps the complete game in one cache entry.
 const cachePrefix = 'sweetie:' + self.registration.scope + ':';
-const currentCache = cachePrefix + 'c74f8626a55a46ffebd6';
+const currentCache = cachePrefix + 'f12f5c090e87d33918e7';
 const directory = new URL(self.registration.scope);
 const entry = new URL('index.html', directory).href;
 

@@ -156,6 +156,14 @@ a .icon {
   letter-spacing: -2.8px;
   padding-right: 5px;
 }
+.brand small {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  margin-left: 6px;
+  padding-top: 5px;
+}
 .nav-inner nav {
   display: flex;
   align-items: stretch;

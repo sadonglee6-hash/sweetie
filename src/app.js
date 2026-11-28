@@ -66,9 +66,9 @@ function notify(msg) {
 function navigation() {
   header.classList.remove("menu-open");
   header.innerHTML =
-    '<div class="nav-inner"><a class="brand" href="#home" aria-label="Sweetie 工坊首页">' +
+    '<div class="nav-inner"><a class="brand" href="#home" aria-label="Sweetie · 蛋糕创作工坊首页">' +
     cherries +
-    '<span>Sweetie</span></a><nav aria-label="主导航">' +
+    '<span>Sweetie</span><small>蛋糕创作工坊</small></a><nav aria-label="主导航">' +
     navs
       .map(
         ([k, v]) =>
@@ -186,7 +186,7 @@ function hero() {
   return (
     '<section class="hero slide-' +
     heroIndex +
-    '" aria-label="Sweetie 工坊封面"><img class="hero-photo" src="' +
+    '" aria-label="Sweetie 蛋糕创作工坊封面"><img class="hero-photo" src="' +
     (heroIndex === 0 ? asset("hero.webp") : photo(r)) +
     '" alt="' +
     esc(r.name) +
@@ -534,8 +534,8 @@ async function render() {
   window.scrollTo({ top: 0, behavior: "instant" });
   document.title =
     page === "edit"
-      ? "手作工作台 · Sweetie"
-      : (navs.find((n) => n[0] === page)?.[1] || "蛋糕工坊") + " · Sweetie";
+      ? "手作工作台 · Sweetie · 蛋糕创作工坊"
+      : (navs.find((n) => n[0] === page)?.[1] || "蛋糕工坊") + " · Sweetie · 蛋糕创作工坊";
   if (page === "home") {
     home();
     if (firstVisit) openDoors(main.querySelector(".hero"));
